@@ -66,7 +66,7 @@ class Create(AAZCommand):
         )
         _args_schema.tags = AAZDictArg(
             options=["--tags"],
-            help="Resource tags",
+            help="Space-separated tags: key[=value] [key[=value] ...].",
         )
 
         tags = cls._args_schema.tags

@@ -79,6 +79,11 @@ class Update(AAZCommand):
             help="The homepage uri.",
             nullable=True,
         )
+        _args_schema.identifier = AAZObjectArg(
+            options=["--identifier"],
+            help="Describes the shared VM Extension unique identifier",
+            nullable=True,
+        )
         _args_schema.label = AAZStrArg(
             options=["--label"],
             help="The label of this Shared VM Extension.",
@@ -91,8 +96,18 @@ class Update(AAZCommand):
         )
         _args_schema.tags = AAZDictArg(
             options=["--tags"],
-            help="Resource tags",
+            help="Space-separated tags: key[=value] [key[=value] ...].",
             nullable=True,
+        )
+
+        identifier = cls._args_schema.identifier
+        identifier.publisher = AAZStrArg(
+            options=["publisher"],
+            help="The name of the Shared VM Extension publisher.",
+        )
+        identifier.type = AAZStrArg(
+            options=["type"],
+            help="The name of the Shared VM Extension type.",
         )
 
         tags = cls._args_schema.tags
@@ -346,8 +361,14 @@ class Update(AAZCommand):
                 properties.set_prop("description", AAZStrType, ".description")
                 properties.set_prop("eula", AAZStrType, ".eula")
                 properties.set_prop("homepageUri", AAZStrType, ".homepage_uri")
+                properties.set_prop("identifier", AAZObjectType, ".identifier")
                 properties.set_prop("label", AAZStrType, ".label")
                 properties.set_prop("privacyUri", AAZStrType, ".privacy_uri")
+
+            identifier = _builder.get(".properties.identifier")
+            if identifier is not None:
+                identifier.set_prop("publisher", AAZStrType, ".publisher", typ_kwargs={"flags": {"required": True}})
+                identifier.set_prop("type", AAZStrType, ".type", typ_kwargs={"flags": {"required": True}})
 
             tags = _builder.get(".tags")
             if tags is not None:

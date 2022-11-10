@@ -15,7 +15,7 @@ from azure.cli.core.aaz import *
     "vm extension publish-version",
 )
 class __CMDGroup(AAZCommandGroup):
-    """Manage shared virtual machine extension version.
+    """Manage shared virtual machine extension version resources.
     """
     pass
 

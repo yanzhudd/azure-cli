@@ -47,6 +47,18 @@ def _write_config_file(user_name):
     return config_file
 
 
+def _write_identifier_file(publisher, type):
+
+    identifier = {
+        'publisher': publisher,
+        'type': type
+    }
+    _, identifier_file = tempfile.mkstemp()
+    with open(identifier_file, 'w') as outfile:
+        json.dump(identifier, outfile)
+    return identifier_file
+
+
 class VMImageListByAliasesScenarioTest(ScenarioTest):
 
     def test_vm_image_list_by_alias(self):
@@ -1772,6 +1784,25 @@ class VMExtensionScenarioTest(ScenarioTest):
             self.check('typePropertiesType', '{ext_type}')
         ])
         self.cmd('vm extension delete --resource-group {rg} --vm-name {vm} --name {ext_name}')
+
+    @ResourceGroupPreparer(name_prefix='cli_test_vm_extension_publish')
+    def test_vm_extension_publish(self, resource_group):
+
+        publisher = 'publisher'
+        type = 'type'
+        identifier_file = _write_identifier_file(publisher, type)
+
+        self.kwargs.update({
+            'sharedExtension': 'mySharedExtension',
+            'eula1': 'eula1',
+            'eula2': 'eula2',
+            'identifier': identifier_file,
+        })
+
+        self.cmd('vm extension publish create -g {rg} -n {mySharedExtension} --eula {eula1}')
+        self.cmd('vm extension publish update -g {rg} -n {mySharedExtension} --eula {eula2}')
+        self.cmd('vm extension publish show -g {rg} -n {mySharedExtension}')
+        self.cmd('vm extension publish delete -g {rg} -n {mySharedExtension}')
 
 
 class VMMachineExtensionImageScenarioTest(ScenarioTest):
