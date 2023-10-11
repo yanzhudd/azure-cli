@@ -1327,6 +1327,21 @@ def _validate_trusted_launch(namespace):
         namespace.enable_secure_boot = True
 
 
+def _validate_trusted_launch_for_minimal_input(namespace):
+    if getattr(namespace, 'attach_os_disk', None) or namespace.image:
+        return
+
+    namespace.image = "MicrosoftWindowsServer:WindowsServer:2022-datacenter-azure-edition:latest"
+    if namespace.enable_secure_boot is None:
+        namespace.enable_secure_boot = True
+
+    if namespace.enable_vtpm is None:
+        namespace.enable_vtpm = True
+
+    if namespace.security_type is None:
+        namespace.security_type = "TrustedLaunch"
+
+
 def _validate_generation_version_and_trusted_launch(cmd, namespace):
     from azure.cli.core.profiles import ResourceType
     if not cmd.supported_api_version(resource_type=ResourceType.MGMT_COMPUTE, min_api='2020-12-01'):
@@ -1464,6 +1479,7 @@ def process_vm_create_namespace(cmd, namespace):
     if namespace.count is not None:
         _validate_count(namespace)
     validate_asg_names_or_ids(cmd, namespace)
+    _validate_trusted_launch_for_minimal_input(namespace)
     _validate_vm_create_storage_profile(cmd, namespace)
     if namespace.storage_profile in [StorageProfile.SACustomImage,
                                      StorageProfile.SAPirImage]:
@@ -1657,6 +1673,7 @@ def get_network_lb(cli_ctx, resource_group_name, lb_name):
 
 
 def process_vmss_create_namespace(cmd, namespace):
+    _validate_trusted_launch_for_minimal_input(namespace)
     from azure.cli.core.azclierror import InvalidArgumentValueError
     uniform_str = 'Uniform'
     flexible_str = 'Flexible'
