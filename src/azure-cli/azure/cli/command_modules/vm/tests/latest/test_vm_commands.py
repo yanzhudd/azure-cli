@@ -9140,16 +9140,18 @@ class VMTrustedLaunchScenarioTest(ScenarioTest):
     def test_disk_trusted_launch(self):
 
         self.kwargs.update({
-            'disk': 'disk1',
+            'disk1': 'disk1',
+            'disk2': 'disk2',
             'snapshot': 'snapshot1',
-            'vm': 'vm1'
+            'vm': 'vm1',
+            'capture': 'managedImage'
         })
 
-        self.kwargs['disk_id'] = self.cmd('disk create -g {rg} -n {disk} --image-reference Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest --hyper-v-generation V2 --security-type TrustedLaunch', checks=[
+        self.kwargs['disk_id'] = self.cmd('disk create -g {rg} -n {disk1} --image-reference Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest --hyper-v-generation V2 --security-type TrustedLaunch', checks=[
             self.check('securityProfile.securityType', 'TrustedLaunch')
         ]).get_output_in_json()['id']
 
-        self.cmd('disk show -g {rg} -n {disk}', checks=[
+        self.cmd('disk show -g {rg} -n {disk1}', checks=[
             self.check('securityProfile.securityType', 'TrustedLaunch')
         ])
 
@@ -9161,13 +9163,20 @@ class VMTrustedLaunchScenarioTest(ScenarioTest):
             self.check('securityProfile.securityType', 'TrustedLaunch')
         ])
 
-        self.cmd('vm create -g {rg} -n {vm} --attach-os-disk {disk} --nsg-rule NONE --os-type linux')
+        self.cmd('vm create -g {rg} -n {vm} --attach-os-disk {disk1} --nsg-rule NONE --os-type linux')
 
         self.cmd('vm show -g {rg} -n {vm}', checks=[
             self.check('securityProfile.securityType', 'TrustedLaunch'),
             self.check('securityProfile.uefiSettings.secureBootEnabled', True),
             self.check('securityProfile.uefiSettings.vTpmEnabled', True)
         ])
+
+        self.cmd('vm deallocate -g {rg} -n {vm}')
+        self.cmd('vm generalize -g {rg} -n {vm}')
+        self.kwargs['managed_image_id'] = self.cmd('image create -g {rg} -n {capture} --source {vm}'
+                                                   ).get_output_in_json()['id']
+
+        self.cmd('disk create -n {disk2} -g {rg} --image-reference {managed_image_id}')
 
     @unittest.skip('vhd is not supported')
     @ResourceGroupPreparer(name_prefix='cli_test_vm_trusted_launch_os_disk_secure_import', location='southcentralus')

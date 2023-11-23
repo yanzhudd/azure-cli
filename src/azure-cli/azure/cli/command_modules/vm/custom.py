@@ -394,6 +394,8 @@ def create_managed_disk(cmd, resource_group_name, disk_name, location=None,  # p
 
     from ._constants import COMPATIBLE_SECURITY_TYPE_VALUE, UPGRADE_SECURITY_HINT
     if image_reference is not None:
+        client = _compute_client_factory(cmd.cli_ctx)
+        response = None
         if not is_valid_resource_id(image_reference):
             # URN or name
             terms = image_reference.split(':')
@@ -402,19 +404,24 @@ def create_managed_disk(cmd, resource_group_name, disk_name, location=None,  # p
                 if disk_version.lower() == 'latest':
                     disk_version = _get_latest_image_version(cmd.cli_ctx, location, disk_publisher, disk_offer,
                                                              disk_sku)
+                response = client.virtual_machine_images.get(location=location, publisher_name=disk_publisher,
+                                                             offer=disk_offer, skus=disk_sku, version=disk_version)
             else:  # error
                 raise CLIError('usage error: --image-reference should be ID or URN (publisher:offer:sku:version).')
         else:
             from msrestazure.tools import parse_resource_id
             terms = parse_resource_id(image_reference)
-            disk_publisher, disk_offer, disk_sku, disk_version = \
-                terms['child_name_1'], terms['child_name_3'], terms['child_name_4'], terms['child_name_5']
+            try:
+                disk_publisher, disk_offer, disk_sku, disk_version = \
+                    terms['child_name_1'], terms['child_name_3'], terms['child_name_4'], terms['child_name_5']
 
-        client = _compute_client_factory(cmd.cli_ctx)
-        response = client.virtual_machine_images.get(location=location, publisher_name=disk_publisher,
-                                                     offer=disk_offer, skus=disk_sku, version=disk_version)
+                response = client.virtual_machine_images.get(location=location, publisher_name=disk_publisher,
+                                                             offer=disk_offer, skus=disk_sku, version=disk_version)
 
-        if hasattr(response, 'hyper_v_generation'):
+            except KeyError:
+                pass
+
+        if response and hasattr(response, 'hyper_v_generation'):
             if response.hyper_v_generation == 'V1':
                 logger.warning(UPGRADE_SECURITY_HINT)
             elif response.hyper_v_generation == 'V2':
@@ -426,9 +433,11 @@ def create_managed_disk(cmd, resource_group_name, disk_name, location=None,  # p
                     security_type = 'TrustedLaunch'
                 if security_type != 'TrustedLaunch':
                     logger.warning(UPGRADE_SECURITY_HINT)
+        elif security_type != 'TrustedLaunch':
+            logger.warning(UPGRADE_SECURITY_HINT)
 
         # image_reference is an ID now
-        image_reference = {'id': response.id}
+        image_reference = {'id': response.id} if response else {'id': image_reference}
         if image_reference_lun is not None:
             image_reference['lun'] = image_reference_lun
 
